@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/twemoji.min.js" defer></script>
 <meta charset="utf-8" />
 <title>World Clocks</title>
 
 <!-- Google Fonts (can be overridden from OBS) -->
 <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&family=Roboto+Mono&display=swap" rel="stylesheet">
-
 <style>
 /* ========== THEME ========== */
 /* Every variable can be overridden in OBS → Browser Source → Custom CSS */
@@ -131,7 +131,11 @@ function tick(){
   });
 }
 
-tick();
+tick();                     // first draw
+setInterval(tick, 1000);    // keep updating
+
+// once the DOM is ready, swap every emoji for a Twemoji SVG:
+window.addEventListener('DOMContentLoaded', () => twemoji.parse(document.body));
 setInterval(tick, 1000);
 </script>
 </body>
