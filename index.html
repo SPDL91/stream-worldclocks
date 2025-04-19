@@ -4,11 +4,11 @@
 <meta charset="utf-8" />
 <title>World Clocks</title>
 
-<!-- Google Fonts (can be overridden from OBS) -->
+<!-- Google Fonts (freely override via OBS if you wish) -->
 <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&family=Roboto+Mono&display=swap" rel="stylesheet">
+
 <style>
-/* ========== THEME ========== */
-/* Every variable can be overridden in OBS → Browser Source → Custom CSS */
+/* ========== THEME ========= */
 :root{
   --accent:      #fbdceb;                      /* divider + default text colour         */
   --clock-color: var(--accent);                /* main text colour                      */
@@ -30,10 +30,10 @@ html,body{
 /* ===== LAYOUT ===== */
 .wrapper{
   width:100%;
-  max-width:640px;               /* fits nicely under a ⅓ column */
+  max-width:640px;
   display:flex;
   flex-direction:column;
-  align-items:flex-end;          /* right‑align everything        */
+  align-items:flex-end;
   padding-right:1rem;
   box-sizing:border-box;
 }
@@ -47,7 +47,15 @@ html,body{
 .city:last-of-type{margin-bottom:0}
 
 /* ===== TYPOGRAPHY ===== */
-.name{font-size:1.6rem;font-weight:700;line-height:1.1}
+.name{
+  display:inline-flex;
+  justify-content:flex-end;  /* ← keep the group right‑aligned          */
+  align-items:center;
+  gap:.25rem;
+  font-size:1.6rem;
+  font-weight:700;
+  line-height:1.1;
+}
 .date{font-size:1.2rem}
 .time{
   font-family:var(--time-font);
@@ -67,11 +75,15 @@ html,body{
 }
 .city:last-of-type::after{display:none}
 
-/* flag emoji */
+/* ===== FLAG SIZE CONTROL ===== */
 .flag{
-  margin:0 0.25rem;
-  font-size:1.6rem;
+  font-size:1em;          /* exactly the height of the city label */
   line-height:1;
+}
+.flag img{                /* when Twemoji replaces the emoji */
+  height:1em;
+  width:auto;
+  vertical-align:-0.15em; /* baseline alignment */
 }
 </style>
 </head>
@@ -87,16 +99,19 @@ html,body{
 const cities = [
   { id:'Seoul',  zone:'Asia/Seoul',       flag:'🇰🇷' },
   { id:'Sydney', zone:'Australia/Sydney', flag:'🇦🇺' },
-  // { id:'NYC',   zone:'America/New_York', flag:'🇺🇸' }, // add more if you like
+  // { id:'NYC',   zone:'America/New_York', flag:'🇺🇸' },
 ];
 
 /* ---------- URL PARAMETERS ----------
-   ?flag=0|1        → show / hide flags (default = 1)
-   ?flagPos=left|right → position of the flag (default = left)
+   ?flag=0|1          → show / hide flags (default = 1)
+   ?flagPos=left|right→ position of the flag (default = left)
 --------------------------------------*/
 const params   = new URLSearchParams(location.search);
 const showFlag = params.get('flag') !== '0';
-const flagLeft = (params.get('flagPos') || 'left') === 'left';
+const posParam =   (params.get('flagPos')   // camelCase
+                 || params.get('flagpos')   // lowercase fallback
+                 || 'left').toLowerCase();
+const flagLeft = posParam !== 'right';      // true  → left
 
 /* ---------- BUILD MARKUP ---------- */
 const wrap = document.getElementById('clockWrapper');
@@ -118,6 +133,11 @@ cities.forEach(c=>{
   wrap.appendChild(block);
 });
 
+/* ---------- EMOJI → TWEMOJI ---------- */
+window.addEventListener('DOMContentLoaded', () => {
+  twemoji.parse(document.body, {folder:'svg', ext:'.svg'});
+});
+
 /* ---------- UPDATE LOOP ---------- */
 const fmtDate = 'DD.MM.YYYY';
 const fmtTime = 'HH:mm:ss Z';
@@ -130,11 +150,7 @@ function tick(){
   });
 }
 
-tick();                     // first draw
-setInterval(tick, 1000);    // keep updating
-
-// once the DOM is ready, swap every emoji for a Twemoji SVG:
-window.addEventListener('DOMContentLoaded', () => twemoji.parse(document.body));
+tick();
 setInterval(tick, 1000);
 </script>
 </body>
