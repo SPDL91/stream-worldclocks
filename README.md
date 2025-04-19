@@ -60,8 +60,3 @@ Paste any CSS in **Browser Source ➜ Custom CSS** to override colours, fonts, g
 ```
 
 OBS injects this after the built‑in styles, so these rules take precedence.
-
----
-
-## License
-MIT
