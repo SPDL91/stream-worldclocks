@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>World Clocks</title>
+
+<!-- Google Fonts (optional) -->
+<link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&family=Roboto+Mono&display=swap" rel="stylesheet">
+
+<style>
+/* =====================  THEME  ===================== */
+:root{
+  /* Colors */
+  --accent      : #fbdceb;
+  --fg          : #ffffff;
+  --bg          : transparent;
+
+  /* Typography */
+  --font-title  : "Comic Neue", sans-serif;
+  --font-time   : "Roboto Mono", monospace;
+  --title-size  : 1.8rem;
+  --date-size   : 1.2rem;
+  --time-size   : 1.4rem;
+
+  /* Layout */
+  --gap         : 1rem;
+  --align       : right;   /* left | center | right            */
+  --cols        : 1;       /* multi‑column support             */
+
+  /* Options */
+  --show-divider: 1;       /* 0 = hide divider                 */
+  --format-24h  : 1;       /* 1 = 24 h, 0 = 12 h               */
+}
+
+/* =====================  BASE  ====================== */
+html,body{
+  margin:0;
+  padding:0;
+  background:var(--bg);
+  color:var(--fg);
+  font-family:var(--font-title);
+}
+
+/* =====================  LAYOUT  ==================== */
+.wrapper{
+  width:100%;
+  max-width:640px;
+  display:flex;
+  flex-direction:column;
+  align-items: var(--align);
+  padding-right:1rem;
+  gap:var(--gap);
+  column-count: var(--cols);
+  box-sizing:border-box;
+}
+
+.city{
+  break-inside: avoid;
+  display:grid;
+  grid-template-columns:auto;
+  text-align: var(--align);
+  row-gap:0.25rem;
+  position:relative;
+}
+
+/* Divider */
+.city::after{
+  content:"";
+  display:block;
+  width:60%;
+  height:2px;
+  background:var(--accent);
+  opacity:.25;
+  margin:0.4rem 0 0 40%;
+  transform-origin:100% 50%;
+  transform:scaleX(var(--show-divider));
+}
+
+/* Night mode dimming */
+.city.is-night{
+  opacity:.6;
+}
+
+/* =====================  TYPE  ====================== */
+.name{
+  font-size:var(--title-size);
+  font-weight:700;
+  line-height:1.1;
+}
+.date{
+  font-size:var(--date-size);
+}
+.time{
+  font-family:var(--font-time);
+  font-size:var(--time-size);
+  letter-spacing:0.5px;
+}
+
+/* Pulse animation on update */
+@keyframes flash{
+  0%{ filter:brightness(1.6); }
+  100%{ filter:brightness(1); }
+}
+.time.updated{
+  animation:flash .2s;
+}
+</style>
+</head>
+<body>
+
+<div class="wrapper" id="clockWrapper"></div>
+
+<!-- Moment.js + Time‑Zone -->
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.43/moment-timezone-with-data.min.js"></script>
+
+<script>
+/********  CONFIG  ********/
+const cities = [
+  { id:'Seoul',   zone:'Asia/Seoul',      flag:'🇰🇷' },
+  { id:'Sydney',  zone:'Australia/Sydney',flag:'🇦🇺' },
+  // { id:'NYC',   zone:'America/New_York',flag:'🇺🇸' },
+];
+
+/********  BUILD MARKUP  ********/
+const wrap = document.getElementById('clockWrapper');
+cities.forEach(c=>{
+  const block = document.createElement('div');
+  block.className = 'city';
+  block.dataset.flag = c.flag;
+  block.innerHTML = `
+    <div class="name">${c.flag} ${c.id}</div>
+    <div class="date" id="${c.id}-date"></div>
+    <div class="time" id="${c.id}-time"></div>
+  `;
+  wrap.appendChild(block);
+});
+
+/********  UPDATE LOOP  ********/
+const fmtDate = 'DD.MM.YYYY';
+const fmt24   = 'HH:mm:ss Z';
+const fmt12   = 'hh:mm:ss A';
+
+function tick(){
+  const use24h = +getComputedStyle(document.documentElement)
+                   .getPropertyValue('--format-24h').trim() !== 0;
+
+  cities.forEach(c=>{
+    const now = moment().tz(c.zone);
+    const hr  = now.hour();
+
+    document.getElementById(`${c.id}-date`).textContent =
+      now.format(fmtDate);
+
+    const timeEl = document.getElementById(`${c.id}-time`);
+    timeEl.textContent = now.format(use24h ? fmt24 : fmt12);
+
+    const parent = timeEl.parentElement;
+    parent.classList.toggle('is-night', hr < 6 || hr >= 20);
+
+    // tiny flash so viewers notice an update
+    timeEl.classList.add('updated');
+    setTimeout(()=>timeEl.classList.remove('updated'),200);
+  });
+}
+tick();
+setInterval(tick, 1000);
+</script>
+</body>
+</html>
