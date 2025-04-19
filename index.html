@@ -1,168 +1,136 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
+<meta charset="utf-8" />
 <title>World Clocks</title>
 
-<!-- Google Fonts (optional) -->
+<!-- Google Fonts (can be overridden from OBS) -->
 <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@700&family=Roboto+Mono&display=swap" rel="stylesheet">
 
 <style>
-/* =====================  THEME  ===================== */
+/* ========== THEME ========== */
+/* Every variable can be overridden in OBS → Browser Source → Custom CSS */
 :root{
-  /* Colors */
-  --accent      : #fbdceb;
-  --fg          : #ffffff;
-  --bg          : transparent;
+  --accent:      #fbdceb;                      /* divider + default text colour         */
+  --clock-color: var(--accent);                /* main text colour                      */
+  --gap:         1rem;                         /* vertical spacing between city blocks  */
 
-  /* Typography */
-  --font-title  : "Roboto Mono", monospace;
-  --font-time   : "Comic Neue", sans-serif;
-  --title-size  : 1.8rem;
-  --date-size   : 1.2rem;
-  --time-size   : 1.4rem;
-
-  /* Layout */
-  --gap         : 1rem;
-  --align       : right;   /* left | center | right            */
-  --cols        : 1;       /* multi‑column support             */
-
-  /* Options */
-  --show-divider: 1;       /* 0 = hide divider                 */
-  --format-24h  : 1;       /* 1 = 24 h, 0 = 12 h               */
+  --label-font: "Comic Neue", sans-serif;      /* city + date font                      */
+  --time-font:  "Roboto Mono", monospace;      /* time font                             */
 }
 
-/* =====================  BASE  ====================== */
+/* ===== BASE ===== */
 html,body{
   margin:0;
   padding:0;
-  background:var(--bg);
-  color:var(--fg);
-  font-family:var(--font-title);
+  background:transparent;        /* keep OBS overlay transparent */
+  color:var(--clock-color);
+  font-family:var(--label-font);
 }
 
-/* =====================  LAYOUT  ==================== */
+/* ===== LAYOUT ===== */
 .wrapper{
   width:100%;
-  max-width:640px;
+  max-width:640px;               /* fits nicely under a ⅓ column */
   display:flex;
   flex-direction:column;
-  align-items: var(--align);
+  align-items:flex-end;          /* right‑align everything        */
   padding-right:1rem;
-  gap:var(--gap);
-  column-count: var(--cols);
   box-sizing:border-box;
 }
 
 .city{
-  break-inside: avoid;
   display:grid;
-  grid-template-columns:auto;
-  text-align: var(--align);
+  text-align:right;
   row-gap:0.25rem;
-  position:relative;
+  margin-bottom:var(--gap);
 }
+.city:last-of-type{margin-bottom:0}
 
-/* Divider */
-.city::after{
-  content:"";
-  display:block;
-  width:60%;
-  height:2px;
-  background:var(--accent);
-  opacity:.25;
-  margin:0.4rem 0 0 40%;
-  transform-origin:100% 50%;
-  transform:scaleX(var(--show-divider));
-}
-
-/* Night mode dimming */
-.city.is-night{
-  opacity:.6;
-}
-
-/* =====================  TYPE  ====================== */
-.name{
-  font-size:var(--title-size);
-  font-weight:700;
-  line-height:1.1;
-}
-.date{
-  font-size:var(--date-size);
-}
+/* ===== TYPOGRAPHY ===== */
+.name{font-size:1.6rem;font-weight:700;line-height:1.1}
+.date{font-size:1.2rem}
 .time{
-  font-family:var(--font-time);
-  font-size:var(--time-size);
+  font-family:var(--time-font);
+  font-size:1.2rem;
   letter-spacing:0.5px;
 }
 
-/* Pulse animation on update */
-@keyframes flash{
-  0%{ filter:brightness(1.6); }
-  100%{ filter:brightness(1); }
+/* small accent divider */
+.city::after{
+  content:"";
+  width:60%;
+  height:2px;
+  background:var(--accent);
+  margin:0.4rem 0 0 40%;
+  display:block;
+  opacity:.25;
 }
-.time.updated{
-  animation:flash .2s;
+.city:last-of-type::after{display:none}
+
+/* flag emoji */
+.flag{
+  margin:0 0.25rem;
+  font-size:1.6rem;
+  line-height:1;
 }
 </style>
 </head>
 <body>
+  <div class="wrapper" id="clockWrapper"></div>
 
-<div class="wrapper" id="clockWrapper"></div>
-
-<!-- Moment.js + Time‑Zone -->
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.43/moment-timezone-with-data.min.js"></script>
+<!-- moment.js + time‑zone data -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.30.1/moment.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.43/moment-timezone-with-data.min.js"></script>
 
 <script>
-/********  CONFIG  ********/
+/* ---------- CITY LIST ---------- */
 const cities = [
-  { id:'Seoul',   zone:'Asia/Seoul',      flag:'🇰🇷' },
-  { id:'Sydney',  zone:'Australia/Sydney',flag:'🇦🇺' },
-  // { id:'NYC',   zone:'America/New_York',flag:'🇺🇸' },
+  { id:'Seoul',  zone:'Asia/Seoul',       flag:'🇰🇷' },
+  { id:'Sydney', zone:'Australia/Sydney', flag:'🇦🇺' },
+  // { id:'NYC',   zone:'America/New_York', flag:'🇺🇸' }, // add more if you like
 ];
 
-/********  BUILD MARKUP  ********/
+/* ---------- URL PARAMETERS ----------
+   ?flag=0|1        → show / hide flags (default = 1)
+   ?flagPos=left|right → position of the flag (default = left)
+--------------------------------------*/
+const params   = new URLSearchParams(location.search);
+const showFlag = params.get('flag') !== '0';
+const flagLeft = (params.get('flagPos') || 'left') === 'left';
+
+/* ---------- BUILD MARKUP ---------- */
 const wrap = document.getElementById('clockWrapper');
+
 cities.forEach(c=>{
+  const nameHTML = showFlag
+    ? flagLeft
+        ? `<span class="flag">${c.flag}</span>${c.id}`
+        : `${c.id}<span class="flag">${c.flag}</span>`
+    : c.id;
+
   const block = document.createElement('div');
   block.className = 'city';
-  block.dataset.flag = c.flag;
   block.innerHTML = `
-    <div class="name">${c.flag} ${c.id}</div>
+    <div class="name">${nameHTML}</div>
     <div class="date" id="${c.id}-date"></div>
     <div class="time" id="${c.id}-time"></div>
   `;
   wrap.appendChild(block);
 });
 
-/********  UPDATE LOOP  ********/
+/* ---------- UPDATE LOOP ---------- */
 const fmtDate = 'DD.MM.YYYY';
-const fmt24   = 'HH:mm:ss Z';
-const fmt12   = 'hh:mm:ss A';
+const fmtTime = 'HH:mm:ss Z';
 
 function tick(){
-  const use24h = +getComputedStyle(document.documentElement)
-                   .getPropertyValue('--format-24h').trim() !== 0;
-
   cities.forEach(c=>{
     const now = moment().tz(c.zone);
-    const hr  = now.hour();
-
-    document.getElementById(`${c.id}-date`).textContent =
-      now.format(fmtDate);
-
-    const timeEl = document.getElementById(`${c.id}-time`);
-    timeEl.textContent = now.format(use24h ? fmt24 : fmt12);
-
-    const parent = timeEl.parentElement;
-    parent.classList.toggle('is-night', hr < 6 || hr >= 20);
-
-    // tiny flash so viewers notice an update
-    timeEl.classList.add('updated');
-    setTimeout(()=>timeEl.classList.remove('updated'),200);
+    document.getElementById(`${c.id}-date`).textContent = now.format(fmtDate);
+    document.getElementById(`${c.id}-time`).textContent  = now.format(fmtTime);
   });
 }
+
 tick();
 setInterval(tick, 1000);
 </script>
