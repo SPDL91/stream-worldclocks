@@ -3,306 +3,519 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Study Timer</title>
+    <title>Enhanced Study Timer</title>
     <style>
+        /* Default CSS Variables - Configurable via OBS Custom CSS */
         :root {
-            --main-bg-color: #FFFFFF00;
-            --main-text-color: #00ffff;
+            /* --- Core Styling --- */
+            --bg-color: #FFFFFF00; /* Background color (default transparent) */
+            --main-text-color: #00ffff; /* Default text color for controls */
+
+            /* --- Timer Styling --- */
+            --timer-font: 'Arial', sans-serif;
+            --timer-color: #00ffff;
+            --timer-font-size: 100px; /* Adjusted default size for horizontal layout */
+
+            /* --- Label Styling --- */
+            --label-font: 'Arial', sans-serif;
+            --label-color: #00ffff;
+            --label-font-size: 30px; /* Adjusted default size */
+
+            /* --- Divider Styling --- */
+            --timer-divider-color: #00ffff80; /* Color for dividers between timers */
+
+            /* --- Control Styling (Less likely to change via OBS CSS) --- */
             --button-bg-color: #00ffff;
             --button-text-color: #000000;
-            --main-font: 'Arial', sans-serif;
-            --label-position: below;
-            --label-text: Study Time;
-            --timer-font-size: 120px;
-            --label-font-size: 36px;
+            --input-bg-color: rgba(255, 255, 255, 0.2);
+            --input-border-color: var(--main-text-color);
         }
 
+        /* --- Base Body Styling --- */
         body {
-            background-color: var(--main-bg-color);
+            background-color: var(--bg-color);
             color: var(--main-text-color);
-            font-family: var(--main-font);
+            font-family: var(--main-font, 'Arial', sans-serif); /* Use main-font if set, fallback */
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            height: 100vh;
+            justify-content: center; /* Center OBS display vertically */
+            min-height: 100vh; /* Ensure controls are pushed down */
             margin: 0;
-            padding: 0;
-            overflow: hidden;
+            padding: 20px; /* Add some padding */
+            box-sizing: border-box;
+            overflow: hidden; /* Prevent scrollbars */
         }
 
-        #timer-container {
+        /* --- OBS Display Area --- */
+        #obs-display {
             width: 100%;
+            display: flex; /* Use flexbox for horizontal layout */
+            justify-content: center; /* Center timers horizontally */
+            align-items: center; /* Align items vertically */
+            flex-wrap: wrap; /* Allow wrapping if space is tight */
+            gap: 20px; /* Space between timer blocks */
+            margin-bottom: 40px; /* Space above the divider */
+            flex-grow: 1; /* Allow display to take up available space */
+        }
+
+        .timer-block {
+            display: flex;
+            flex-direction: column; /* Default: label below timer */
+            align-items: center;
             text-align: center;
         }
 
-        #label-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 100%;
+        .timer-block.hidden {
+            display: none; /* Hide block if toggled off */
         }
 
-        #timer {
+        .timer-value {
+            font-family: var(--timer-font);
+            color: var(--timer-color);
             font-size: var(--timer-font-size);
             font-weight: 700;
-            margin: 10px 0;
+            line-height: 1.1; /* Adjust line height */
         }
 
-        #timer-label {
+        .timer-label {
+            font-family: var(--label-font);
+            color: var(--label-color);
             font-size: var(--label-font-size);
-            margin: 10px 0 20px;
+            margin-top: 5px; /* Space between timer and label */
         }
 
-        .divider {
+        /* Label position: above */
+        .timer-block.label-above {
+            flex-direction: column-reverse; /* Label above timer */
+        }
+        .timer-block.label-above .timer-label {
+             margin-top: 0;
+             margin-bottom: 5px; /* Space when label is above */
+        }
+
+
+        .timer-divider {
+            font-family: var(--timer-font); /* Match timer font */
+            color: var(--timer-divider-color); /* Use specific divider color */
+            font-size: calc(var(--timer-font-size) * 0.8); /* Slightly smaller than timer */
+            font-weight: normal;
+            align-self: center; /* Vertically center divider */
+            margin: 0 10px; /* Add horizontal spacing */
+            line-height: 1; /* Ensure it aligns well */
+        }
+
+        .timer-divider.hidden {
+            display: none;
+        }
+
+
+        /* --- Divider between OBS display and Controls --- */
+        #controls-divider {
             width: 80%;
             height: 2px;
-            background-color: #FFFFFF00;
-            margin: 40px 0;
+            background-color: #FFFFFF00; /* Keep transparent */
+            margin: 20px 0; /* Reduced margin */
         }
 
+        /* --- Controls Area --- */
         #controls {
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 15px;
             width: 100%;
+            max-width: 600px; /* Limit controls width */
+            padding: 20px;
+            background-color: rgba(0, 0, 0, 0.1); /* Slightly visible background for clarity */
+            border-radius: 8px;
         }
 
-        button {
+        .control-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .control-section h3 {
+            margin: 0 0 10px 0;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            width: 100%;
+            border-bottom: 1px solid var(--main-text-color);
+            padding-bottom: 5px;
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 90%;
+            gap: 10px;
+        }
+
+         .control-row label {
+            flex-basis: 150px; /* Fixed width for labels */
+            text-align: right;
+            flex-shrink: 0; /* Prevent label from shrinking */
+         }
+
+         .control-row input[type="text"],
+         .control-row input[type="time"] /* Use time input for goal */
+          {
+            background-color: var(--input-bg-color);
+            color: var(--main-text-color);
+            border: 1px solid var(--input-border-color);
+            border-radius: 4px;
+            padding: 8px;
+            font-size: 16px;
+            text-align: center;
+            flex-grow: 1; /* Allow input to take remaining space */
+         }
+         /* Style time input specifically */
+         .control-row input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(1); /* Make calendar icon visible on dark backgrounds */
+         }
+
+
+        #controls button {
             background-color: var(--button-bg-color);
             color: var(--button-text-color);
             border: none;
             border-radius: 5px;
-            padding: 12px 24px;
-            font-size: 18px;
+            padding: 10px 20px;
+            font-size: 16px;
             cursor: pointer;
-            transition: all 0.3s ease;
-            width: 200px;
+            transition: opacity 0.3s ease;
+            min-width: 120px; /* Minimum button width */
         }
 
-        button:hover {
+        #controls button:hover {
             opacity: 0.8;
         }
 
-        .time-control {
+        /* Specific styling for toggle buttons */
+        .toggle-button.active {
+             background-color: #4CAF50; /* Green when active */
+             color: white;
+        }
+         .toggle-button {
+             min-width: 80px; /* Smaller width for toggles */
+         }
+
+        /* Styling for main action buttons */
+        .action-buttons {
             display: flex;
-            align-items: center;
-            justify-content: space-between;
-            width: 80%;
-            max-width: 500px;
-        }
-
-        .time-control label {
-            width: 150px;
-            text-align: right;
-            margin-right: 15px;
-        }
-
-        .time-control input {
-            background-color: rgba(255, 255, 255, 0.2);
-            color: var(--main-text-color);
-            border: 1px solid var(--main-text-color);
-            border-radius: 4px;
-            padding: 8px;
-            font-size: 18px;
-            width: 150px;
-            text-align: center;
-        }
-
-        #remaining-display {
-            font-weight: 700;
-        }
-
-        /* OBS display section - only this part visible on stream */
-        #obs-display {
+            gap: 15px;
+            justify-content: center;
             width: 100%;
-            text-align: center;
         }
+         .action-buttons button {
+             flex-grow: 1; /* Make buttons fill space */
+             max-width: 200px;
+         }
+
+         /* Styling for visibility toggles */
+        .visibility-toggles {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
     </style>
 </head>
 <body>
-    <!-- OBS Display Section - Only this will be visible on stream -->
     <div id="obs-display">
-        <div id="label-container">
-            <!-- Elements will be reordered via JS based on --label-position -->
-            <div id="timer">00:00:00</div>
-            <div id="timer-label">Study Time</div>
+        <div id="current-timer-block" class="timer-block">
+            <div id="current-timer-display" class="timer-value">00:00:00</div>
+            <div id="current-timer-label" class="timer-label">Current</div>
+        </div>
+
+        <div id="divider1" class="timer-divider">|</div>
+
+        <div id="remaining-timer-block" class="timer-block">
+            <div id="remaining-timer-display" class="timer-value">00:00:00</div>
+            <div id="remaining-timer-label" class="timer-label">Remaining</div>
+        </div>
+
+        <div id="divider2" class="timer-divider">|</div>
+
+        <div id="goal-timer-block" class="timer-block">
+            <div id="goal-timer-display" class="timer-value">12:00:00</div>
+            <div id="goal-timer-label" class="timer-label">Goal</div>
         </div>
     </div>
-    
-    <div class="divider"></div>
-    
-    <!-- Controls Section - Will be visible in Interact view but not on stream -->
+
+    <div id="controls-divider"></div>
+
     <div id="controls">
-        <div class="buttons">
-            <button id="startPauseBtn">Start / Pause</button>
-            <button id="resetBtn">Reset</button>
+        <div class="control-section">
+            <h3>Timer Control</h3>
+            <div class="action-buttons">
+                <button id="startPauseBtn">Start</button>
+                <button id="resetBtn">Reset</button>
+            </div>
+             <div class="control-row">
+                 <label for="goalTimeInput">Set Goal Time:</label>
+                 <input type="time" id="goalTimeInput" value="12:00:00" step="1" />
+             </div>
         </div>
-        
-        <div class="time-control">
-            <label for="currentTime">Current Time:</label>
-            <input type="text" id="currentTime" value="00:00:00" />
-        </div>
-        
-        <div class="time-control">
-            <label for="goalTime">Goal Time:</label>
-            <input type="text" id="goalTime" value="12:00:00" />
-        </div>
-        
-        <div class="time-control">
-            <label for="remainingTime">Remaining Time:</label>
-            <input type="text" id="remainingTime" value="12:00:00" readonly />
+
+
+        <div class="control-section">
+            <h3>Display Options</h3>
+             <div class="control-row">
+                 <label>Show Timers:</label>
+                 <div class="visibility-toggles">
+                     <button id="toggle-current" class="toggle-button active">Current</button>
+                     <button id="toggle-remaining" class="toggle-button active">Remaining</button>
+                     <button id="toggle-goal" class="toggle-button active">Goal</button>
+                 </div>
+             </div>
+             <div class="control-row">
+                 <label for="current-label-input">Current Label:</label>
+                 <input type="text" id="current-label-input" value="Current" />
+             </div>
+             <div class="control-row">
+                 <label for="remaining-label-input">Remaining Label:</label>
+                 <input type="text" id="remaining-label-input" value="Remaining" />
+             </div>
+             <div class="control-row">
+                 <label for="goal-label-input">Goal Label:</label>
+                 <input type="text" id="goal-label-input" value="Goal" />
+             </div>
+             <div class="control-row">
+                 <label>Label Position:</label>
+                 <button id="toggle-label-position" class="toggle-button">Below Timer</button>
+             </div>
         </div>
     </div>
 
     <script>
-        let timer;
+        // --- State Variables ---
+        let timerInterval = null; // Stores the interval ID
         let isRunning = false;
-        let totalSeconds = 0;
-        let goalSeconds = 43200; // Default 12 hours (12 * 60 * 60)
+        let totalSeconds = 0; // Current elapsed time in seconds
+        let goalSeconds = 12 * 3600; // Goal time in seconds (default 12 hours)
+        let isLabelAbove = false; // Tracks label position
 
-        // DOM elements
-        const timerDisplay = document.getElementById('timer');
-        const timerLabel = document.getElementById('timer-label');
-        const labelContainer = document.getElementById('label-container');
+        // --- DOM Element References ---
+        // Timer Displays
+        const currentTimerDisplay = document.getElementById('current-timer-display');
+        const remainingTimerDisplay = document.getElementById('remaining-timer-display');
+        const goalTimerDisplay = document.getElementById('goal-timer-display');
+        // Timer Labels
+        const currentTimerLabel = document.getElementById('current-timer-label');
+        const remainingTimerLabel = document.getElementById('remaining-timer-label');
+        const goalTimerLabel = document.getElementById('goal-timer-label');
+        // Timer Blocks (for visibility and label positioning)
+        const currentTimerBlock = document.getElementById('current-timer-block');
+        const remainingTimerBlock = document.getElementById('remaining-timer-block');
+        const goalTimerBlock = document.getElementById('goal-timer-block');
+        // Dividers
+        const divider1 = document.getElementById('divider1');
+        const divider2 = document.getElementById('divider2');
+
+        // Control Buttons
         const startPauseBtn = document.getElementById('startPauseBtn');
         const resetBtn = document.getElementById('resetBtn');
-        const currentTimeInput = document.getElementById('currentTime');
-        const goalTimeInput = document.getElementById('goalTime');
-        const remainingTimeInput = document.getElementById('remainingTime');
+        // Goal Input
+        const goalTimeInput = document.getElementById('goalTimeInput');
+        // Visibility Toggles
+        const toggleCurrentBtn = document.getElementById('toggle-current');
+        const toggleRemainingBtn = document.getElementById('toggle-remaining');
+        const toggleGoalBtn = document.getElementById('toggle-goal');
+        // Label Inputs
+        const currentLabelInput = document.getElementById('current-label-input');
+        const remainingLabelInput = document.getElementById('remaining-label-input');
+        const goalLabelInput = document.getElementById('goal-label-input');
+        // Label Position Toggle
+        const toggleLabelPositionBtn = document.getElementById('toggle-label-position');
 
-        // Format seconds to HH:MM:SS
+        // --- Utility Functions ---
+        /**
+         * Formats total seconds into HH:MM:SS string.
+         * @param {number} seconds - Total seconds.
+         * @returns {string} Formatted time string.
+         */
         function formatTime(seconds) {
             const hours = Math.floor(seconds / 3600);
             const minutes = Math.floor((seconds % 3600) / 60);
-            const secs = seconds % 60;
-            
+            const secs = Math.floor(seconds % 60); // Use floor to avoid fractional seconds display
+
             return [hours, minutes, secs]
                 .map(v => v < 10 ? "0" + v : v)
                 .join(":");
         }
 
-        // Parse HH:MM:SS to seconds
+        /**
+         * Parses HH:MM:SS string into total seconds.
+         * Handles potential missing seconds (HH:MM).
+         * @param {string} timeString - Time string (e.g., "12:00:00" or "01:30").
+         * @returns {number} Total seconds, or NaN if invalid.
+         */
         function parseTimeToSeconds(timeString) {
-            const [hours, minutes, seconds] = timeString.split(':').map(Number);
+            if (!timeString) return NaN;
+            const parts = timeString.split(':').map(Number);
+            let hours = 0, minutes = 0, seconds = 0;
+
+            if (parts.length === 3) {
+                [hours, minutes, seconds] = parts;
+            } else if (parts.length === 2) {
+                [hours, minutes] = parts;
+            } else {
+                return NaN; // Invalid format
+            }
+
+            if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) {
+                return NaN;
+            }
+
             return hours * 3600 + minutes * 60 + seconds;
         }
 
-        // Update all displays
+        // --- Core Timer Logic ---
+        /**
+         * Updates all timer displays and labels based on current state.
+         */
         function updateDisplays() {
-            timerDisplay.textContent = formatTime(totalSeconds);
-            currentTimeInput.value = formatTime(totalSeconds);
-            
-            // Calculate and display remaining time
-            const remaining = Math.max(0, goalSeconds - totalSeconds);
-            remainingTimeInput.value = formatTime(remaining);
+            // Update Timer Values
+            currentTimerDisplay.textContent = formatTime(totalSeconds);
+            const remainingSeconds = Math.max(0, goalSeconds - totalSeconds);
+            remainingTimerDisplay.textContent = formatTime(remainingSeconds);
+            goalTimerDisplay.textContent = formatTime(goalSeconds); // Keep goal display consistent
+
+            // Update Labels (from input fields)
+            currentTimerLabel.textContent = currentLabelInput.value || "Current"; // Default if empty
+            remainingTimerLabel.textContent = remainingLabelInput.value || "Remaining";
+            goalTimerLabel.textContent = goalLabelInput.value || "Goal";
+
+            // Update Divider Visibility
+            updateDividerVisibility();
         }
 
-        // Start or pause the timer
+        /**
+         * Controls the visibility of dividers based on adjacent timer blocks.
+         */
+        function updateDividerVisibility() {
+            const isCurrentVisible = !currentTimerBlock.classList.contains('hidden');
+            const isRemainingVisible = !remainingTimerBlock.classList.contains('hidden');
+            const isGoalVisible = !goalTimerBlock.classList.contains('hidden');
+
+            // Divider 1 (between Current and Remaining)
+            divider1.classList.toggle('hidden', !(isCurrentVisible && isRemainingVisible));
+            // Divider 2 (between Remaining and Goal)
+            divider2.classList.toggle('hidden', !(isRemainingVisible && isGoalVisible));
+        }
+
+
+        /**
+         * Starts or pauses the timer interval.
+         */
         function toggleTimer() {
             if (isRunning) {
-                clearInterval(timer);
+                clearInterval(timerInterval);
                 startPauseBtn.textContent = "Start";
             } else {
-                timer = setInterval(() => {
+                // Prevent starting if already at or past goal? Optional.
+                // if (totalSeconds >= goalSeconds) return;
+
+                // Ensure the timer starts immediately, then intervals
+                 if (totalSeconds === 0) updateDisplays(); // Update immediately if starting from 0
+
+                timerInterval = setInterval(() => {
                     totalSeconds++;
                     updateDisplays();
+                    // Optional: Stop timer when goal is reached
+                    // if (totalSeconds >= goalSeconds) {
+                    //     clearInterval(timerInterval);
+                    //     isRunning = false;
+                    //     startPauseBtn.textContent = "Start";
+                    //     // Maybe add a visual indication of completion
+                    // }
                 }, 1000);
                 startPauseBtn.textContent = "Pause";
             }
             isRunning = !isRunning;
         }
 
-        // Reset the timer
+        /**
+         * Resets the timer to zero and stops it.
+         */
         function resetTimer() {
-            clearInterval(timer);
+            clearInterval(timerInterval);
             isRunning = false;
             totalSeconds = 0;
             startPauseBtn.textContent = "Start";
-            updateDisplays();
+            updateDisplays(); // Update display to show 00:00:00
         }
 
-        // Event Listeners
+        // --- Control Event Handlers ---
+
+        // Start/Pause Button
         startPauseBtn.addEventListener('click', toggleTimer);
+
+        // Reset Button
         resetBtn.addEventListener('click', resetTimer);
 
-        // Manual time input
-        currentTimeInput.addEventListener('change', function() {
-            try {
-                totalSeconds = parseTimeToSeconds(this.value);
-                updateDisplays();
-            } catch (e) {
-                alert("Please enter time in HH:MM:SS format");
-                this.value = formatTime(totalSeconds);
-            }
-        });
-
-        // Goal time input
+        // Goal Time Input
         goalTimeInput.addEventListener('change', function() {
-            try {
-                goalSeconds = parseTimeToSeconds(this.value);
-                updateDisplays();
-            } catch (e) {
-                alert("Please enter time in HH:MM:SS format");
+            const parsedSeconds = parseTimeToSeconds(this.value);
+            if (!isNaN(parsedSeconds)) {
+                goalSeconds = parsedSeconds;
+                // Update the input value to the formatted time to ensure consistency (HH:MM:SS)
+                this.value = formatTime(goalSeconds);
+                 updateDisplays(); // Update remaining time immediately
+            } else {
+                alert("Invalid time format. Please use HH:MM:SS.");
+                // Revert to the previous valid goal time
                 this.value = formatTime(goalSeconds);
             }
         });
 
-        // Initialize displays
+        // Visibility Toggles
+        function setupVisibilityToggle(button, block) {
+            button.addEventListener('click', () => {
+                block.classList.toggle('hidden');
+                button.classList.toggle('active', !block.classList.contains('hidden'));
+                updateDividerVisibility(); // Update dividers when visibility changes
+            });
+            // Initial state based on button class
+             block.classList.toggle('hidden', !button.classList.contains('active'));
+        }
+        setupVisibilityToggle(toggleCurrentBtn, currentTimerBlock);
+        setupVisibilityToggle(toggleRemainingBtn, remainingTimerBlock);
+        setupVisibilityToggle(toggleGoalBtn, goalTimerBlock);
+
+
+        // Label Text Inputs
+        currentLabelInput.addEventListener('input', updateDisplays);
+        remainingLabelInput.addEventListener('input', updateDisplays);
+        goalLabelInput.addEventListener('input', updateDisplays);
+
+        // Label Position Toggle
+        toggleLabelPositionBtn.addEventListener('click', () => {
+            isLabelAbove = !isLabelAbove;
+            const blocks = document.querySelectorAll('.timer-block');
+            blocks.forEach(block => {
+                block.classList.toggle('label-above', isLabelAbove);
+            });
+            toggleLabelPositionBtn.textContent = isLabelAbove ? "Above Timer" : "Below Timer";
+             toggleLabelPositionBtn.classList.toggle('active', isLabelAbove);
+        });
+
+        // --- Initialization ---
+        // Set initial goal input value correctly formatted
+        goalTimeInput.value = formatTime(goalSeconds);
+        // Initial call to set up displays and dividers
         updateDisplays();
-        
-        // Get URL parameters
-        function getUrlParameter(name) {
-            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
-            const regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
-            const results = regex.exec(location.search);
-            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
-        }
-        
-        // Apply custom parameters from CSS variables and URL parameters
-        function applyCustomParameters() {
-            // Get CSS variables
-            const style = getComputedStyle(document.documentElement);
-            let labelPosition = style.getPropertyValue('--label-position').trim().replace(/['"]/g, '');
-            let labelText = style.getPropertyValue('--label-text').trim().replace(/['"]/g, '');
-            
-            // Override with URL parameters if present
-            const urlLabelPosition = getUrlParameter('labelPosition');
-            const urlLabelText = getUrlParameter('labelText');
-            const urlTimerFontSize = getUrlParameter('timerFontSize');
-            const urlLabelFontSize = getUrlParameter('labelFontSize');
-            
-            if (urlLabelPosition) labelPosition = urlLabelPosition;
-            if (urlLabelText) labelText = urlLabelText;
-            if (urlTimerFontSize) document.documentElement.style.setProperty('--timer-font-size', urlTimerFontSize);
-            if (urlLabelFontSize) document.documentElement.style.setProperty('--label-font-size', urlLabelFontSize);
-            
-            // Set label text
-            timerLabel.textContent = labelText;
-            
-            // Set label position
-            if (labelPosition === 'above') {
-                labelContainer.insertBefore(timerLabel, timerDisplay);
-            } else {
-                labelContainer.appendChild(timerLabel);
-            }
-        }
-        
-        // Apply custom parameters on load
-        applyCustomParameters();
-        
-        // Check for URL parameter changes
-        window.addEventListener('hashchange', applyCustomParameters);
-        window.addEventListener('popstate', applyCustomParameters);
-        
-        // Observer for CSS changes (for OBS custom CSS updates)
-        try {
-            const observer = new MutationObserver(applyCustomParameters);
-            observer.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
-        } catch (e) {
-            console.log('MutationObserver not supported in this browser');
-        }
+
+
     </script>
 </body>
 </html>
