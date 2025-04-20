@@ -11,8 +11,10 @@
             --button-bg-color: #00ffff;
             --button-text-color: #000000;
             --main-font: 'Arial', sans-serif;
-            --label-position: below; /* Note: removed quotes */
-            --label-text: Study Time; /* Note: removed quotes */
+            --label-position: below;
+            --label-text: Study Time;
+            --timer-font-size: 120px;
+            --label-font-size: 36px;
         }
 
         body {
@@ -42,13 +44,13 @@
         }
 
         #timer {
-            font-size: 120px;
-            font-weight: 700;
+            font-size: var(--timer-font-size);
+            font-weight: bold;
             margin: 10px 0;
         }
 
         #timer-label {
-            font-size: 36px;
+            font-size: var(--label-font-size);
             margin: 10px 0 20px;
         }
 
@@ -56,7 +58,7 @@
             width: 80%;
             height: 2px;
             background-color: #FFFFFF00;
-            margin: 20px 0;
+            margin: 40px 0;
         }
 
         #controls {
@@ -109,7 +111,7 @@
         }
 
         #remaining-display {
-            font-weight: 700;
+            font-weight: bold;
         }
 
         /* OBS display section - only this part visible on stream */
@@ -258,7 +260,7 @@
             return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
         }
         
-        // Apply label position and text from CSS variables and URL parameters
+        // Apply custom parameters from CSS variables and URL parameters
         function applyCustomParameters() {
             // Get CSS variables
             const style = getComputedStyle(document.documentElement);
@@ -268,9 +270,13 @@
             // Override with URL parameters if present
             const urlLabelPosition = getUrlParameter('labelPosition');
             const urlLabelText = getUrlParameter('labelText');
+            const urlTimerFontSize = getUrlParameter('timerFontSize');
+            const urlLabelFontSize = getUrlParameter('labelFontSize');
             
             if (urlLabelPosition) labelPosition = urlLabelPosition;
             if (urlLabelText) labelText = urlLabelText;
+            if (urlTimerFontSize) document.documentElement.style.setProperty('--timer-font-size', urlTimerFontSize);
+            if (urlLabelFontSize) document.documentElement.style.setProperty('--label-font-size', urlLabelFontSize);
             
             // Set label text
             timerLabel.textContent = labelText;
