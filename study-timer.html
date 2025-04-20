@@ -11,8 +11,8 @@
             --button-bg-color: #00ffff;
             --button-text-color: #000000;
             --main-font: 'Arial', sans-serif;
-            --label-position: 'below'; /* 'above' or 'below' */
-            --label-text: 'Study Time';
+            --label-position: below; /* Note: removed quotes */
+            --label-text: Study Time; /* Note: removed quotes */
         }
 
         body {
@@ -250,12 +250,27 @@
         // Initialize displays
         updateDisplays();
         
-        // Apply label position and text from CSS variables
+        // Get URL parameters
+        function getUrlParameter(name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            const regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            const results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        }
+        
+        // Apply label position and text from CSS variables and URL parameters
         function applyCustomParameters() {
             // Get CSS variables
             const style = getComputedStyle(document.documentElement);
-            const labelPosition = style.getPropertyValue('--label-position').trim().replace(/['"]/g, '');
-            const labelText = style.getPropertyValue('--label-text').trim().replace(/['"]/g, '');
+            let labelPosition = style.getPropertyValue('--label-position').trim().replace(/['"]/g, '');
+            let labelText = style.getPropertyValue('--label-text').trim().replace(/['"]/g, '');
+            
+            // Override with URL parameters if present
+            const urlLabelPosition = getUrlParameter('labelPosition');
+            const urlLabelText = getUrlParameter('labelText');
+            
+            if (urlLabelPosition) labelPosition = urlLabelPosition;
+            if (urlLabelText) labelText = urlLabelText;
             
             // Set label text
             timerLabel.textContent = labelText;
@@ -271,9 +286,17 @@
         // Apply custom parameters on load
         applyCustomParameters();
         
-        // Apply custom parameters when CSS changes (for OBS custom CSS updates)
-        const observer = new MutationObserver(applyCustomParameters);
-        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
+        // Check for URL parameter changes
+        window.addEventListener('hashchange', applyCustomParameters);
+        window.addEventListener('popstate', applyCustomParameters);
+        
+        // Observer for CSS changes (for OBS custom CSS updates)
+        try {
+            const observer = new MutationObserver(applyCustomParameters);
+            observer.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
+        } catch (e) {
+            console.log('MutationObserver not supported in this browser');
+        }
     </script>
 </body>
 </html>
