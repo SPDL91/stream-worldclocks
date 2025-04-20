@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enhanced Study Timer</title>
+    <title>Enhanced Study Timer (v3)</title>
     <style>
         /* Default CSS Variables - Configurable via OBS Custom CSS */
         :root {
@@ -29,6 +29,7 @@
             --button-text-color: #000000;
             --input-bg-color: rgba(255, 255, 255, 0.2);
             --input-border-color: var(--main-text-color);
+            --input-readonly-bg-color: rgba(100, 100, 100, 0.2); /* Background for readonly inputs */
         }
 
         /* --- Base Body Styling --- */
@@ -164,8 +165,7 @@
             flex-shrink: 0; /* Prevent label from shrinking */
          }
 
-         .control-row input[type="text"],
-         .control-row input[type="time"] /* Use time input for goal */
+         .control-row input[type="text"]
           {
             background-color: var(--input-bg-color);
             color: var(--main-text-color);
@@ -176,9 +176,10 @@
             text-align: center;
             flex-grow: 1; /* Allow input to take remaining space */
          }
-         /* Style time input specifically */
-         .control-row input[type="time"]::-webkit-calendar-picker-indicator {
-            filter: invert(1); /* Make calendar icon visible on dark backgrounds */
+         /* Style readonly inputs differently */
+         .control-row input[readonly] {
+             background-color: var(--input-readonly-bg-color);
+             cursor: not-allowed;
          }
 
 
@@ -213,6 +214,7 @@
             gap: 15px;
             justify-content: center;
             width: 100%;
+            margin-bottom: 10px; /* Add space below buttons */
         }
          .action-buttons button {
              flex-grow: 1; /* Make buttons fill space */
@@ -260,12 +262,19 @@
                 <button id="startPauseBtn">Start</button>
                 <button id="resetBtn">Reset</button>
             </div>
+            <div class="control-row">
+                 <label for="currentTimeInput">Current Time:</label>
+                 <input type="text" id="currentTimeInput" value="00:00:00" />
+             </div>
+             <div class="control-row">
+                 <label for="remainingTimeInput">Remaining Time:</label>
+                 <input type="text" id="remainingTimeInput" value="12:00:00" readonly />
+             </div>
              <div class="control-row">
                  <label for="goalTimeInput">Set Goal Time:</label>
-                 <input type="time" id="goalTimeInput" value="12:00:00" step="1" />
+                 <input type="text" id="goalTimeInput" value="12:00:00" placeholder="HH:MM:SS"/>
              </div>
         </div>
-
 
         <div class="control-section">
             <h3>Display Options</h3>
@@ -324,8 +333,10 @@
         // Control Buttons
         const startPauseBtn = document.getElementById('startPauseBtn');
         const resetBtn = document.getElementById('resetBtn');
-        // Goal Input
-        const goalTimeInput = document.getElementById('goalTimeInput');
+        // Control Inputs
+        const currentTimeInput = document.getElementById('currentTimeInput'); // Added
+        const remainingTimeInput = document.getElementById('remainingTimeInput'); // Added
+        const goalTimeInput = document.getElementById('goalTimeInput'); // Type changed to text
         // Visibility Toggles
         const toggleCurrentBtn = document.getElementById('toggle-current');
         const toggleRemainingBtn = document.getElementById('toggle-remaining');
@@ -344,9 +355,11 @@
          * @returns {string} Formatted time string.
          */
         function formatTime(seconds) {
-            const hours = Math.floor(seconds / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            const secs = Math.floor(seconds % 60); // Use floor to avoid fractional seconds display
+            // Ensure seconds is a non-negative number
+            const safeSeconds = Math.max(0, seconds);
+            const hours = Math.floor(safeSeconds / 3600);
+            const minutes = Math.floor((safeSeconds % 3600) / 60);
+            const secs = Math.floor(safeSeconds % 60); // Use floor to avoid fractional seconds display
 
             return [hours, minutes, secs]
                 .map(v => v < 10 ? "0" + v : v)
@@ -361,6 +374,7 @@
          */
         function parseTimeToSeconds(timeString) {
             if (!timeString) return NaN;
+            // Allow HH:MM format as well
             const parts = timeString.split(':').map(Number);
             let hours = 0, minutes = 0, seconds = 0;
 
@@ -368,12 +382,21 @@
                 [hours, minutes, seconds] = parts;
             } else if (parts.length === 2) {
                 [hours, minutes] = parts;
-            } else {
+            } else if (parts.length === 1 && !isNaN(parts[0])) {
+                // Allow entering just seconds? Or maybe just minutes? Let's stick to HH:MM:SS or HH:MM
+                 return NaN; // Require at least HH:MM
+            }
+             else {
                 return NaN; // Invalid format
             }
 
+            // Check if any part is NaN after parsing
             if (isNaN(hours) || isNaN(minutes) || isNaN(seconds)) {
                 return NaN;
+            }
+            // Basic validation for time components
+            if (hours < 0 || minutes < 0 || minutes > 59 || seconds < 0 || seconds > 59) {
+                 return NaN;
             }
 
             return hours * 3600 + minutes * 60 + seconds;
@@ -381,16 +404,23 @@
 
         // --- Core Timer Logic ---
         /**
-         * Updates all timer displays and labels based on current state.
+         * Updates all timer displays, labels, and control inputs based on current state.
          */
         function updateDisplays() {
-            // Update Timer Values
-            currentTimerDisplay.textContent = formatTime(totalSeconds);
             const remainingSeconds = Math.max(0, goalSeconds - totalSeconds);
-            remainingTimerDisplay.textContent = formatTime(remainingSeconds);
-            goalTimerDisplay.textContent = formatTime(goalSeconds); // Keep goal display consistent
 
-            // Update Labels (from input fields)
+            // Update OBS Display Timer Values
+            currentTimerDisplay.textContent = formatTime(totalSeconds);
+            remainingTimerDisplay.textContent = formatTime(remainingSeconds);
+            goalTimerDisplay.textContent = formatTime(goalSeconds);
+
+            // Update Control Input Values
+            currentTimeInput.value = formatTime(totalSeconds);
+            remainingTimeInput.value = formatTime(remainingSeconds);
+            // Goal time input is user-controlled, but ensure it reflects the current goalSeconds if reset/init
+            // goalTimeInput.value = formatTime(goalSeconds); // Avoid overwriting user input unless necessary
+
+            // Update OBS Display Labels (from input fields)
             currentTimerLabel.textContent = currentLabelInput.value || "Current"; // Default if empty
             remainingTimerLabel.textContent = remainingLabelInput.value || "Remaining";
             goalTimerLabel.textContent = goalLabelInput.value || "Goal";
@@ -422,22 +452,15 @@
                 clearInterval(timerInterval);
                 startPauseBtn.textContent = "Start";
             } else {
-                // Prevent starting if already at or past goal? Optional.
-                // if (totalSeconds >= goalSeconds) return;
-
-                // Ensure the timer starts immediately, then intervals
-                 if (totalSeconds === 0) updateDisplays(); // Update immediately if starting from 0
+                // Ensure the timer starts immediately if needed, then intervals
+                 if (totalSeconds === 0 && !timerInterval) {
+                    // Update display immediately only if starting from exactly 0 and not already paused
+                    updateDisplays();
+                 }
 
                 timerInterval = setInterval(() => {
                     totalSeconds++;
                     updateDisplays();
-                    // Optional: Stop timer when goal is reached
-                    // if (totalSeconds >= goalSeconds) {
-                    //     clearInterval(timerInterval);
-                    //     isRunning = false;
-                    //     startPauseBtn.textContent = "Start";
-                    //     // Maybe add a visual indication of completion
-                    // }
                 }, 1000);
                 startPauseBtn.textContent = "Pause";
             }
@@ -445,14 +468,17 @@
         }
 
         /**
-         * Resets the timer to zero and stops it.
+         * Resets the timer to zero, stops it, and updates displays/inputs.
          */
         function resetTimer() {
             clearInterval(timerInterval);
+            timerInterval = null; // Clear interval ID
             isRunning = false;
             totalSeconds = 0;
             startPauseBtn.textContent = "Start";
-            updateDisplays(); // Update display to show 00:00:00
+            // Update goal input to reflect current goal in standard format upon reset
+            goalTimeInput.value = formatTime(goalSeconds);
+            updateDisplays(); // Update all displays and inputs to show 00:00:00 etc.
         }
 
         // --- Control Event Handlers ---
@@ -463,17 +489,39 @@
         // Reset Button
         resetBtn.addEventListener('click', resetTimer);
 
-        // Goal Time Input
+        // Current Time Input (Manual Adjustment)
+        currentTimeInput.addEventListener('change', function() {
+            const wasRunning = isRunning;
+            if (wasRunning) {
+                toggleTimer(); // Pause timer while adjusting
+            }
+            const parsedSeconds = parseTimeToSeconds(this.value);
+            if (!isNaN(parsedSeconds)) {
+                totalSeconds = parsedSeconds;
+                updateDisplays(); // Update everything
+            } else {
+                // Invalid input, revert the input field to the current time
+                console.warn("Invalid time format entered for Current Time.");
+                this.value = formatTime(totalSeconds);
+            }
+             if (wasRunning) {
+                // Use setTimeout to avoid potential race condition with interval clearing/setting
+                 setTimeout(toggleTimer, 50); // Resume timer shortly after
+            }
+        });
+
+
+        // Goal Time Input (Text based)
         goalTimeInput.addEventListener('change', function() {
             const parsedSeconds = parseTimeToSeconds(this.value);
             if (!isNaN(parsedSeconds)) {
                 goalSeconds = parsedSeconds;
-                // Update the input value to the formatted time to ensure consistency (HH:MM:SS)
+                // Optionally update the input to the strictly formatted version
                 this.value = formatTime(goalSeconds);
-                 updateDisplays(); // Update remaining time immediately
+                 updateDisplays(); // Update remaining time and goal display immediately
             } else {
-                alert("Invalid time format. Please use HH:MM:SS.");
-                // Revert to the previous valid goal time
+                console.warn("Invalid time format entered for Goal Time.");
+                // Revert to the previous valid goal time display
                 this.value = formatTime(goalSeconds);
             }
         });
@@ -510,10 +558,20 @@
         });
 
         // --- Initialization ---
-        // Set initial goal input value correctly formatted
+        // Set initial control input values correctly formatted
+        currentTimeInput.value = formatTime(totalSeconds);
+        remainingTimeInput.value = formatTime(Math.max(0, goalSeconds - totalSeconds));
         goalTimeInput.value = formatTime(goalSeconds);
-        // Initial call to set up displays and dividers
+        // Initial call to set up displays and dividers based on default visibility etc.
         updateDisplays();
+        // Ensure initial divider visibility is correct
+        updateDividerVisibility();
+        // Ensure initial label position is applied if needed (though default is below)
+        document.querySelectorAll('.timer-block').forEach(block => {
+                block.classList.toggle('label-above', isLabelAbove);
+        });
+         toggleLabelPositionBtn.textContent = isLabelAbove ? "Above Timer" : "Below Timer";
+         toggleLabelPositionBtn.classList.toggle('active', isLabelAbove);
 
 
     </script>
