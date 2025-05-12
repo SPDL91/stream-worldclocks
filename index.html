@@ -33,14 +33,14 @@ html,body{
   max-width:640px;
   display:flex;
   flex-direction:column;
-  align-items:flex-end;
+  align-items:flex-start;
   padding-right:1rem;
   box-sizing:border-box;
 }
 
 .city{
   display:grid;
-  text-align:right;
+  text-align:left;
   row-gap:0.25rem;
   margin-bottom:var(--gap);
 }
@@ -49,7 +49,7 @@ html,body{
 /* ===== TYPOGRAPHY ===== */
 .name{
   display:inline-flex;
-  justify-content:flex-end;  /* ← keep the group right‑aligned          */
+  justify-content:flex-start;  /* ← keep the group right‑aligned          */
   align-items:center;
   gap:.25rem;
   font-size:1.6rem;
